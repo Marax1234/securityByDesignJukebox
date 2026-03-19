@@ -1,0 +1,98 @@
+# ===========================
+# Python
+# ===========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ===========================
+# Flask / App runtime
+# ===========================
+flask_session/
+*.db
+*.sqlite
+*.sqlite3
+instance/
+
+# ===========================
+# Secrets & credentials
+# ===========================
+*.secrets
+*.key
+*.pem
+*.p12
+*.pfx
+.env
+.env.*
+!.env.example
+
+# Certificate artifacts
+*.csr
+*.srl
+extfile.cnf
+
+# infrastructure/certs — keep public certs, exclude private keys and temp files
+infrastructure/certs/*.key
+infrastructure/certs/*.csr
+infrastructure/certs/*.srl
+infrastructure/certs/san.cnf
+!infrastructure/certs/rootCA.pem
+!infrastructure/certs/tls.crt
+
+# Cosign signing key (private)
+cosign.key
+cosign.key.sig
+
+# ===========================
+# Kubernetes secrets (only the secret manifest)
+# ===========================
+# NOTE: infrastructure/k8s/postgres-secret.yaml contains dev credentials.
+# For production, use a secrets manager and never commit real secrets.
+
+
+
+# ===========================
+# Node / Tailwind CSS
+# ===========================
+node_modules/
+frontend/static/output.css
+
+# ===========================
+# Build artifacts
+# ===========================
+sbom.json
+test.txt
+
+# ===========================
+# IDE / Editor
+# ===========================
+.idea/
+.vscode/
+*.swp
+*.swo
+CLAUDE.md
+docs/SECURITY_AUDIT.md
+docs/checkliste.md
+*~
+.DS_Store
+Thumbs.db
+
+# ===========================
+# Docker
+# ===========================
+# (docker-compose override files with local overrides)
+docker-compose.override.yml
