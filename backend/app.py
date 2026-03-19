@@ -1,7 +1,9 @@
 import os
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+UTC = timezone.utc
 from functools import wraps
 from dotenv import load_dotenv
 
@@ -156,11 +158,14 @@ def check_session_timeout():
     if "user" in session:
         last = session.get("last_active")
         if last:
-            elapsed = (datetime.utcnow() - datetime.fromisoformat(last)).total_seconds()
+            last_dt = datetime.fromisoformat(last)
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=UTC)
+            elapsed = (datetime.now(UTC) - last_dt).total_seconds()
             if elapsed > INACTIVITY_TIMEOUT:
                 session.clear()
                 return jsonify({"error": "Session expired due to inactivity"}), 401
-        session["last_active"] = datetime.utcnow().isoformat()
+        session["last_active"] = datetime.now(UTC).isoformat()
 
 
 # -----------------------------
@@ -452,7 +457,7 @@ def modify_review(review_id):
            SET title=%s, reviewText=%s, stars=%s, updatedAt=%s
            WHERE id=%s
            RETURNING *""",
-        (title, review_text, stars, datetime.utcnow(), review_id),
+        (title, review_text, stars, datetime.now(UTC), review_id),
     )
     updated = cur.fetchone()
     conn.commit()
