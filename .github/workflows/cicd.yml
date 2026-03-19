@@ -12,7 +12,7 @@ jobs:
   sbom:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Generate SBOM from source (CycloneDX JSON)
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
@@ -20,7 +20,7 @@ jobs:
           mkdir -p evidence/sbom
           syft dir:. \
             -o cyclonedx-json=evidence/sbom/sbom.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: evidence/sbom/sbom.json
@@ -32,10 +32,10 @@ jobs:
     needs: sbom
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - run: pip install -r backend/requirements.txt
@@ -62,7 +62,7 @@ jobs:
             --report-format json \
             --report-path evidence/secrets/gitleaks.json \
             --exit-code 1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: scan-reports
@@ -78,8 +78,8 @@ jobs:
     needs: scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: "npm"
@@ -93,7 +93,7 @@ jobs:
         run: |
           mkdir -p evidence/build
           docker save jukebox:latest | gzip > evidence/build/jukebox.tar.gz
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: docker-image
           path: evidence/build/jukebox.tar.gz
@@ -106,11 +106,11 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v6
         with:
           name: docker-image
           path: evidence/build
-      - uses: sigstore/cosign-installer@v3.4.0
+      - uses: sigstore/cosign-installer@v4.1.0
       - name: Sign image tar
         env:
           COSIGN_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
@@ -129,7 +129,7 @@ jobs:
           echo "Git SHA:   ${{ github.sha }}" >> evidence/signing/sign.log
           echo "Timestamp: $(date -u)" >> evidence/signing/sign.log
           rm -f cosign.key
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: signing-evidence
           path: |
@@ -149,15 +149,15 @@ jobs:
       contents: read
       packages: write   # Wird für den Promote-Schritt benötigt (s.u.)
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v6
         with:
           name: docker-image
           path: evidence/build
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v6
         with:
           name: signing-evidence
           path: evidence/signing
-      - uses: sigstore/cosign-installer@v3.4.0
+      - uses: sigstore/cosign-installer@v4.1.0
       - name: Verify image signature
         env:
           COSIGN_PUBLIC_KEY: ${{ secrets.COSIGN_PUBLIC_KEY }}
@@ -175,7 +175,7 @@ jobs:
       - name: Load Docker image
         run: docker load < evidence/build/jukebox.tar.gz
       - name: Trivy image scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: jukebox:latest
           format: table
@@ -199,7 +199,7 @@ jobs:
             "image":       "jukebox:latest"
           }
           EOF
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: quality-gate-evidence
@@ -210,7 +210,7 @@ jobs:
       # Erst wenn alle Quality Gates bestanden sind, wird das Image gepusht.
       # Uncomment to enable (COSIGN_PRIVATE_KEY + COSIGN_PASSWORD ebenfalls nötig
       # um das gepushte Image in der Registry neu zu signieren):
-      # - uses: docker/login-action@v2
+      # - uses: docker/login-action@v3
       #   with:
       #     registry: ghcr.io
       #     username: ${{ github.actor }}

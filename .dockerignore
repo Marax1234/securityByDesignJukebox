@@ -17,10 +17,14 @@ __pycache__/
 .env
 .env.*
 *.secrets
+**/*.key
 *.key
+**/*.csr
 *.csr
+**/*.srl
 *.srl
 extfile.cnf
+infrastructure/certs/
 
 # Databases
 *.db

@@ -45,13 +45,13 @@ instance/
 *.srl
 extfile.cnf
 
-# infrastructure/certs — keep public certs, exclude private keys and temp files
+# infrastructure/certs — exclude all generated cert files and keys
 infrastructure/certs/*.key
+infrastructure/certs/*.pem
+infrastructure/certs/*.crt
 infrastructure/certs/*.csr
 infrastructure/certs/*.srl
 infrastructure/certs/san.cnf
-!infrastructure/certs/rootCA.pem
-!infrastructure/certs/tls.crt
 
 # Cosign signing key (private)
 cosign.key
