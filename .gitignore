@@ -60,8 +60,8 @@ cosign.key.sig
 # ===========================
 # Kubernetes secrets (only the secret manifest)
 # ===========================
-# NOTE: infrastructure/k8s/postgres-secret.yaml contains dev credentials.
-# For production, use a secrets manager and never commit real secrets.
+# Generated at deploy-time via kubectl — never commit real credentials.
+infrastructure/k8s/postgres-secret.yaml
 
 
 

@@ -26,6 +26,14 @@ spec:
                 sleep 2;
               done;
               echo "Postgres is ready."
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
       containers:
         - name: jukebox
           image: jukebox:local

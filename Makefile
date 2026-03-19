@@ -1,6 +1,6 @@
 .PHONY: install install-dev lint css-build css-watch dev db stop \
         up down minikube-start build generate-certs create-namespace enable-ingress \
-        load-image apply-secrets apply-manifests wait-healthy k8s-status k8s-logs
+        load-image apply-secrets apply-manifests wait-healthy port-forward k8s-status k8s-logs
 
 # Einmalig: Virtualenv + Abhängigkeiten installieren
 install:
@@ -54,20 +54,38 @@ build: css-build
 	docker build -t jukebox:local .
 
 # Full automated deployment — runs all steps in order
-up: minikube-start build generate-certs create-namespace enable-ingress load-image apply-secrets apply-manifests wait-healthy
+up: minikube-start build generate-certs create-namespace enable-ingress load-image apply-secrets apply-manifests wait-healthy port-forward
 	@echo ""
 	@echo "=== Ready ==="
-	@echo "NodePort URL : http://$(shell minikube ip):30007"
-	@echo "Ingress URL  : https://jukebox.local  (add '$(shell minikube ip) jukebox.local' to /etc/hosts)"
+	@echo "App : http://localhost:8080"
+
+# Start port-forwarding in the background (idempotent — skips if already running)
+port-forward:
+	@if ss -tlnp 2>/dev/null | grep -q ':8080 '; then \
+		echo "Port forwarding already active on localhost:8080."; \
+	else \
+		echo "Starting port forwarding on localhost:8080..."; \
+		nohup kubectl port-forward -n jukebox service/jukebox-service 8080:80 > /tmp/kubectl-pf.log 2>&1 & \
+		sleep 2; \
+		if ss -tlnp 2>/dev/null | grep -q ':8080 '; then \
+			echo "Port forwarding started — http://localhost:8080"; \
+		else \
+			echo "ERROR: Port forwarding failed. Check /tmp/kubectl-pf.log"; \
+			cat /tmp/kubectl-pf.log; \
+		fi \
+	fi
 
 # Start Minikube if it is not already running
 minikube-start:
 	@if ! minikube status --format='{{.Host}}' 2>/dev/null | grep -q Running; then \
 		echo "Starting Minikube..."; \
-		minikube start --driver=docker; \
+		minikube start --driver=docker --extra-config=apiserver.audit-log-path=""; \
 	else \
 		echo "Minikube already running."; \
 	fi
+	@echo "Waiting for Kubernetes API server..."
+	@until kubectl cluster-info > /dev/null 2>&1; do sleep 2; done
+	@echo "API server ready."
 
 # Generate self-signed CA + leaf cert for jukebox.local (idempotent)
 generate-certs:
@@ -127,9 +145,26 @@ load-image:
 	@echo "Loading jukebox:local into Minikube..."
 	minikube image load jukebox:local
 
-# Apply secrets: postgres-secret from manifest, app-secret generated at runtime, TLS secret from certs
-apply-secrets:
-	kubectl apply -f infrastructure/k8s/postgres-secret.yaml
+# Generate .secrets with secure random credentials on first run (gitignored via *.secrets).
+# Delete .secrets to rotate credentials.
+.secrets:
+	@echo "Generating .secrets with secure random credentials..."
+	@printf 'POSTGRES_DB=jukebox\nPOSTGRES_USER=jukebox\nPOSTGRES_PASSWORD=%s\n' \
+		"$$(openssl rand -base64 32)" > .secrets
+	@echo ".secrets created (gitignored). Delete it to regenerate credentials."
+
+# Apply secrets — reads credentials from .secrets; env vars take precedence if explicitly set.
+apply-secrets: .secrets
+	@_db="$${POSTGRES_DB:-$$(grep ^POSTGRES_DB= .secrets | cut -d= -f2-)}"; \
+	_user="$${POSTGRES_USER:-$$(grep ^POSTGRES_USER= .secrets | cut -d= -f2-)}"; \
+	_pass="$${POSTGRES_PASSWORD:-$$(grep ^POSTGRES_PASSWORD= .secrets | cut -d= -f2-)}"; \
+	kubectl create secret generic postgres-secret \
+		--namespace jukebox \
+		--from-literal=POSTGRES_DB="$$_db" \
+		--from-literal=POSTGRES_USER="$$_user" \
+		--from-literal=POSTGRES_PASSWORD="$$_pass" \
+		--from-literal=DB_HOST="postgres-service" \
+		--dry-run=client -o yaml | kubectl apply -f -
 	@kubectl create secret generic app-secret \
 		--namespace jukebox \
 		--from-literal=SECRET_KEY="$$(openssl rand -base64 32)" \
