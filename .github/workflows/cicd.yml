@@ -149,11 +149,11 @@ jobs:
       contents: read
       packages: write   # Wird für den Promote-Schritt benötigt (s.u.)
     steps:
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v4
         with:
           name: docker-image
           path: evidence/build
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v4
         with:
           name: signing-evidence
           path: evidence/signing
